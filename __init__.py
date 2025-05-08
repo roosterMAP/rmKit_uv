@@ -191,6 +191,23 @@ def unregister():
 	global RMLIB
 	if not RMLIB:
 		return
+	
+	from . import (
+		move_to_furthest_uv,
+		stitch,
+		panel,
+		loopringuv,
+		gridify,
+		relativeislands,
+		uvtransform,
+		unrotate,
+		rectangularize,
+		hotspot,
+		uvboundstransform,
+		uvgrowshrink,
+		preferences,
+		linear_deformer_uv,
+	)
 
 	bpy.utils.unregister_class( rmKitUVPannel_parent_uv )
 	loopringuv.unregister()
