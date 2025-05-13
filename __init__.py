@@ -67,38 +67,7 @@ def register():
 	preferences.register()
 
 def unregister():
-<<<<<<< HEAD
 	bpy.utils.unregister_class( rmKitUVPannel_parent )
-=======
-	if operator_exists( RMLIB_OT_RestartPrompt.bl_idname ):
-		bpy.utils.unregister_class(RMLIB_OT_RestartPrompt)
-	if operator_exists( RMLIB_OT_DownloadPrompt.bl_idname ):
-		bpy.utils.unregister_class(RMLIB_OT_DownloadPrompt)
-
-	bpy.utils.unregister_class(rmKitUVPannel_parent)
-	
-	global RMLIB
-	if not RMLIB:
-		return
-	
-	from . import (
-		move_to_furthest_uv,
-		stitch,
-		panel,
-		loopringuv,
-		gridify,
-		relativeislands,
-		uvtransform,
-		unrotate,
-		rectangularize,
-		hotspot,
-		uvboundstransform,
-		uvgrowshrink,
-		preferences,
-		linear_deformer_uv,
-	)
-
->>>>>>> 2cc6208f5386339ee9f91c92d66ad0f7625fadf6
 	bpy.utils.unregister_class( rmKitUVPannel_parent_uv )
 	loopringuv.unregister()
 	move_to_furthest_uv.unregister()
