@@ -606,7 +606,8 @@ def read_hot_file( file ):
 
 
 def get_hotfile_path():
-	filepath = os.path.join( os.path.dirname( os.path.dirname( rmlib.__file__ ) ), 'atlas_repo.hot' )
+	writable_dir = bpy.utils.extension_path_user( __package__, create=True )
+	filepath = os.path.join( writable_dir, 'atlas_repo.hot' )
 	if not os.path.isfile( filepath ):
 		write_default_file( filepath )
 	return filepath

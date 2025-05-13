@@ -1,6 +1,6 @@
 schema_version = "1.0.0"
 id = "rmKit_uv"
-version = "1.0.1"
+version = "1.0.2"
 name = "rmKitUV"
 tagline = "Collection of Tools"
 maintainer = "Timothee Yeramian <lead.acrysoft@gmail.com>"
@@ -11,7 +11,7 @@ license = [
 ]
 
 website = "https://rmkit.readthedocs.io/en/latest/"
-tags = ["3D View", "Modeling", "Mesh", "Object", "Material"]
+tags = ["Mesh", "UV", "Material"]
 
 blender_version_min = "4.2.0"
 
