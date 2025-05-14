@@ -200,19 +200,19 @@ class IMAGE_EDITOR_MT_PIE_uvmovetofurthest( bpy.types.Menu ):
 		pie = layout.menu_pie()
 		op_l = pie.operator( 'mesh.rm_uvmovetofurthest', text='Left' )
 		op_l.str_dir = 'left'
-		op_l.local = context.object.mtfuv_prop_off
+		op_l.local = bool(getattr(context.scene.rmkituv_props.movetofurthestuvprops, 'mtfuv_prop_off', False))
 		
 		op_r = pie.operator( 'mesh.rm_uvmovetofurthest', text='Right' )
 		op_r.str_dir = 'right'
-		op_r.local = context.object.mtfuv_prop_off
+		op_r.local = bool(getattr(context.scene.rmkituv_props.movetofurthestuvprops, 'mtfuv_prop_off', False))
 		
 		op_d = pie.operator( 'mesh.rm_uvmovetofurthest', text='Down' )
 		op_d.str_dir = 'down'
-		op_d.local = context.object.mtfuv_prop_off
+		op_d.local = bool(getattr(context.scene.rmkituv_props.movetofurthestuvprops, 'mtfuv_prop_off', False))
 		
 		op_u = pie.operator( 'mesh.rm_uvmovetofurthest', text='Up' )
 		op_u.str_dir = 'up'
-		op_u.local = context.object.mtfuv_prop_off
+		op_u.local = bool(getattr(context.scene.rmkituv_props.movetofurthestuvprops, 'mtfuv_prop_off', False))
 
 		pie.separator()
 		
@@ -220,11 +220,11 @@ class IMAGE_EDITOR_MT_PIE_uvmovetofurthest( bpy.types.Menu ):
 		
 		op_h = pie.operator( 'mesh.rm_uvmovetofurthest', text='Horizontal' )
 		op_h.str_dir = 'vertical'
-		op_h.local = context.object.mtfuv_prop_off
+		op_h.local = bool(getattr(context.scene.rmkituv_props.movetofurthestuvprops, 'mtfuv_prop_off', False))
 				
 		op_v = pie.operator( 'mesh.rm_uvmovetofurthest', text='Vertical' )
 		op_v.str_dir = 'horizontal'
-		op_v.local = context.object.mtfuv_prop_off
+		op_v.local = bool(getattr(context.scene.rmkituv_props.movetofurthestuvprops, 'mtfuv_prop_off', False))
 
 
 class IMAGE_EDITOR_MT_PIE_uvmovetofurthest_local( bpy.types.Menu ):
@@ -238,19 +238,19 @@ class IMAGE_EDITOR_MT_PIE_uvmovetofurthest_local( bpy.types.Menu ):
 		pie = layout.menu_pie()
 		op_l = pie.operator( 'mesh.rm_uvmovetofurthest', text='Left' )
 		op_l.str_dir = 'left'
-		op_l.local = context.object.mtfuv_prop_on
+		op_l.local = bool(getattr(context.scene.rmkituv_props.movetofurthestuvprops, 'mtfuv_prop_on', False))
 		
 		op_r = pie.operator( 'mesh.rm_uvmovetofurthest', text='Right' )
 		op_r.str_dir = 'right'
-		op_r.local = context.object.mtfuv_prop_on
+		op_r.local = bool(getattr(context.scene.rmkituv_props.movetofurthestuvprops, 'mtfuv_prop_on', False))
 		
 		op_d = pie.operator( 'mesh.rm_uvmovetofurthest', text='Down' )
 		op_d.str_dir = 'down'
-		op_d.local = context.object.mtfuv_prop_on
+		op_d.local = bool(getattr(context.scene.rmkituv_props.movetofurthestuvprops, 'mtfuv_prop_on', False))
 		
 		op_u = pie.operator( 'mesh.rm_uvmovetofurthest', text='Up' )
 		op_u.str_dir = 'up'
-		op_u.local = context.object.mtfuv_prop_on
+		op_u.local = bool(getattr(context.scene.rmkituv_props.movetofurthestuvprops, 'mtfuv_prop_on', False))
 		
 		pie.separator()
 		
@@ -258,24 +258,20 @@ class IMAGE_EDITOR_MT_PIE_uvmovetofurthest_local( bpy.types.Menu ):
 		
 		op_h = pie.operator( 'mesh.rm_uvmovetofurthest', text='Horizontal' )
 		op_h.str_dir = 'vertical'
-		op_h.local = context.object.mtfuv_prop_on
+		op_h.local = bool(getattr(context.scene.rmkituv_props.movetofurthestuvprops, 'mtfuv_prop_on', False))
 				
 		op_v = pie.operator( 'mesh.rm_uvmovetofurthest', text='Vertical' )
 		op_v.str_dir = 'horizontal'
-		op_v.local = context.object.mtfuv_prop_on
+		op_v.local = bool(getattr(context.scene.rmkituv_props.movetofurthestuvprops, 'mtfuv_prop_on', False))
 
 
 def register():
 	bpy.utils.register_class( MESH_OT_uvmovetofurthest )
 	bpy.utils.register_class( IMAGE_EDITOR_MT_PIE_uvmovetofurthest )
 	bpy.utils.register_class( IMAGE_EDITOR_MT_PIE_uvmovetofurthest_local )
-	bpy.types.Object.mtfuv_prop_on = bpy.props.BoolProperty( default=True	)
-	bpy.types.Object.mtfuv_prop_off = bpy.props.BoolProperty( default=False )	
 	
 
 def unregister():
 	bpy.utils.unregister_class( MESH_OT_uvmovetofurthest )
 	bpy.utils.unregister_class( IMAGE_EDITOR_MT_PIE_uvmovetofurthest )
 	bpy.utils.unregister_class( IMAGE_EDITOR_MT_PIE_uvmovetofurthest_local )
-	del bpy.types.Object.mtfuv_prop_on
-	del bpy.types.Object.mtfuv_prop_off

@@ -636,15 +636,15 @@ def get_hotspot( context ):
 	if rmmesh is None:
 		return None, None
 
-	if context.scene.use_subrect_atlas:
-		if context.scene.subrect_atlas is None:
+	if context.scene.rmkituv_props.hotspotprops.hs_use_subrect_atlas:
+		if context.scene.rmkituv_props.hotspotprops.hs_subrect_atlas is None:
 			return None
 		hotspots = {}
-		h = Hotspot.from_bmesh( rmlib.rmMesh( context.scene.subrect_atlas ) )
+		h = Hotspot.from_bmesh( rmlib.rmMesh( context.scene.rmkituv_props.hotspotprops.hs_subrect_atlas ) )
 
 		material_aspect = 1.0
 		try:
-			d = list( context.scene.subrect_atlas.dimensions )			
+			d = list( context.scene.rmkituv_props.hotspotprops.hs_subrect_atlas.dimensions )			
 			if d[0] < d[1] and d[0] < d[2]:
 				material_aspect = d[1] / d[2]
 			elif d[1] < d[0] and d[1] < d[2]:
@@ -679,7 +679,10 @@ def get_hotspot( context ):
 			if midx in hotspots or midx in failed_midxs:
 				continue
 
-			material = rmmesh.mesh.materials[ midx ]
+			try:
+				material = rmmesh.mesh.materials[ midx ]
+			except IndexError:
+				continue
 
 			material_aspect = 1.0
 			try:
@@ -991,7 +994,7 @@ class MESH_OT_moshotspot( bpy.types.Operator ):
 		if len( hotspot_dict ) < 1:
 			return { 'CANCELLED' }
 
-		use_trim = context.scene.recttype_filter != 'notrim'		
+		use_trim = context.scene.rmkituv_props.hotspotprops.hs_recttype_filter != 'notrim'		
 
 		rmmesh = rmlib.rmMesh.GetActive( context )
 		with rmmesh as rmmesh:
@@ -1016,7 +1019,7 @@ class MESH_OT_moshotspot( bpy.types.Operator ):
 						loops.add( l )
 				source_bounds = Bounds2d.from_loops( loops, uvlayer, materialaspect=hotspot.materialaspect )
 
-				mat = source_bounds.transform( target_bounds, skip_rot=False, trim=use_trim, inset=context.scene.hotspot_inset / 1024.0 )
+				mat = source_bounds.transform( target_bounds, skip_rot=False, trim=use_trim, inset=context.scene.rmkituv_props.hotspotprops.hs_hotspot_inset / 1024.0 )
 				for l in loops:
 					uv = mathutils.Vector( l[uvlayer].uv.copy() ).to_3d()
 					uv[2] = 1.0
@@ -1052,7 +1055,7 @@ class MESH_OT_nrsthotspot( bpy.types.Operator ):
 		if len( hotspot_dict ) < 1:
 			return { 'CANCELLED' }
 
-		use_trim = context.scene.recttype_filter != 'notrim'
+		use_trim = context.scene.rmkituv_props.hotspotprops.hs_recttype_filter != 'notrim'
 
 		rmmesh = rmlib.rmMesh.GetActive( context )
 		with rmmesh as rmmesh:
@@ -1075,7 +1078,7 @@ class MESH_OT_nrsthotspot( bpy.types.Operator ):
 						loops.add( l )
 				source_bounds = Bounds2d.from_loops( loops, uvlayer, materialaspect=hotspot.materialaspect )
 				target_bounds = hotspot.nearest( source_bounds.center.x, source_bounds.center.y ).copy()
-				mat = source_bounds.transform( target_bounds, skip_rot=True, trim=use_trim, inset=context.scene.hotspot_inset / 1024.0 )
+				mat = source_bounds.transform( target_bounds, skip_rot=True, trim=use_trim, inset=context.scene.rmkituv_props.hotspotprops.hs_hotspot_inset / 1024.0 )
 				for l in loops:
 					uv = mathutils.Vector( l[uvlayer].uv.copy() ).to_3d()
 					uv[2] = 1.0
@@ -1114,15 +1117,15 @@ class MESH_OT_matchhotspot( bpy.types.Operator ):
 			self.report( { 'WARNING' }, 'Could not find hotspot atlas!!!' )
 			return { 'CANCELLED' }
 
-		use_trim = context.scene.recttype_filter != 'notrim'
+		use_trim = context.scene.rmkituv_props.hotspotprops.hs_recttype_filter != 'notrim'
 
 		uvlayers = []
 
 		#preprocess uvs
 		islands_as_indexes = []
 		if context.area.type == 'VIEW_3D': #if in 3dvp, scale to mat size then rectangularize/gridify uv islands
-			uv_modes = ( context.scene.hotspot_uv1, context.scene.hotspot_uv2 )
-			if context.scene.use_multiUV:
+			uv_modes = ( context.scene.rmkituv_props.hotspotprops.hs_hotspot_uv1, context.scene.rmkituv_props.hotspotprops.hs_hotspot_uv2 )
+			if context.scene.rmkituv_props.hotspotprops.hs_use_multiUV:
 				if uv_modes[0] == 'none' and uv_modes[1] == 'none':
 					self.repo( {'ERROR'}, 'Could not hotspot multiUV match because both uv enums set to None!!!' )
 					return { 'CANCELLED' }
@@ -1134,7 +1137,7 @@ class MESH_OT_matchhotspot( bpy.types.Operator ):
 					self.report( { 'WARNING' }, 'No uv data found!!!' )
 					return { 'CANCELLED' }				
 
-				if context.scene.use_multiUV:
+				if context.scene.rmkituv_props.hotspotprops.hs_use_multiUV:
 					for i, uvmode in enumerate( uv_modes ):
 						if uvmode != 'none':
 							try:
@@ -1158,7 +1161,7 @@ class MESH_OT_matchhotspot( bpy.types.Operator ):
 					islands_as_indexes.append( [ f.index for f in island ] )					
 					island.select( replace=True )
 					for i, uvlayer in enumerate( uvlayers ):
-						if not context.scene.use_multiUV or uv_modes[i] == 'hotspot':
+						if not context.scene.rmkituv_props.hotspotprops.hs_use_multiUV or uv_modes[i] == 'hotspot':
 							result = bpy.ops.mesh.rm_uvgridify( uv_map_name=uvlayer.name ) #gridify
 							if result == { 'CANCELLED' }:
 								rmmesh.mesh.uv_layers.active_index = i
@@ -1210,15 +1213,15 @@ class MESH_OT_matchhotspot( bpy.types.Operator ):
 						for l in f.loops:
 							loops.append( l )
 					for i, uvlayer in enumerate( uvlayers ):
-						if not context.scene.use_multiUV or uv_modes[i] == 'hotspot':
+						if not context.scene.rmkituv_props.hotspotprops.hs_use_multiUV or uv_modes[i] == 'hotspot':
 							source_bounds = Bounds2d.from_loops( loops, uvlayer, materialaspect=hotspot.materialaspect )
 							if source_bounds.area <= 0.00001:
 								continue
-							target_bounds = hotspot.match( source_bounds, tollerance=self.tollerance, trim_filter=context.scene.recttype_filter ).copy()
+							target_bounds = hotspot.match( source_bounds, tollerance=self.tollerance, trim_filter=context.scene.rmkituv_props.hotspotprops.hs_recttype_filter ).copy()
 							if target_bounds is None:
 								self.report( { 'WARNING' }, 'Could not find a hotspot match for a uvisland!!!' )
 								continue
-							mat = source_bounds.transform( target_bounds, skip_rot=False, trim=use_trim, inset=context.scene.hotspot_inset / 1024.0 )
+							mat = source_bounds.transform( target_bounds, skip_rot=False, trim=use_trim, inset=context.scene.rmkituv_props.hotspotprops.hs_hotspot_inset / 1024.0 )
 							for l in loops:
 								uv = mathutils.Vector( l[uvlayer].uv.copy() ).to_3d()
 								uv[2] = 1.0
@@ -1246,11 +1249,11 @@ class MESH_OT_matchhotspot( bpy.types.Operator ):
 						for l in f.loops:
 							loops.append( l )
 					source_bounds = Bounds2d.from_loops( loops, uvlayer, materialaspect = hotspot.materialaspect )
-					target_bounds = hotspot.match( source_bounds, tollerance=self.tollerance, trim_filter=context.scene.recttype_filter ).copy()
+					target_bounds = hotspot.match( source_bounds, tollerance=self.tollerance, trim_filter=context.scene.rmkituv_props.hotspotprops.hs_recttype_filter ).copy()
 					if target_bounds is None:
 						self.report( { 'WARNING' }, 'Could not find a hotspot match for a uvisland!!!' )
 						continue
-					mat = source_bounds.transform( target_bounds, skip_rot=False, trim=use_trim, inset=context.scene.hotspot_inset / 1024.0 )		
+					mat = source_bounds.transform( target_bounds, skip_rot=False, trim=use_trim, inset=context.scene.rmkituv_props.hotspotprops.hs_hotspot_inset / 1024.0 )		
 					for l in loops:
 						uv = mathutils.Vector( l[uvlayer].uv.copy() ).to_3d()
 						uv[2] = 1.0
@@ -1510,14 +1513,14 @@ class UV_PT_UVHotspotTools( bpy.types.Panel ):
 
 	def draw( self, context ):
 		layout = self.layout
-		layout.prop( context.scene, 'use_subrect_atlas' )
+		layout.prop( context.scene.rmkituv_props.hotspotprops, 'hs_use_subrect_atlas' )
 		r1 = layout.row()
 		r1.label( text="Atlas: ")
-		r1.prop_search( context.scene, "subrect_atlas", context.scene, "objects", text="", icon="MOD_MULTIRES" )
-		r1.enabled = context.scene.use_subrect_atlas
+		r1.prop_search( context.scene.rmkituv_props.hotspotprops, "hs_subrect_atlas", context.scene, "objects", text="", icon="MOD_MULTIRES" )
+		r1.enabled = context.scene.rmkituv_props.hotspotprops.hs_use_subrect_atlas
 		r2 = layout.row()
-		r2.prop( context.scene, 'recttype_filter' )
-		r2.prop( context.scene, 'hotspot_inset' )
+		r2.prop( context.scene.rmkituv_props.hotspotprops, 'hs_recttype_filter' )
+		r2.prop( context.scene.rmkituv_props.hotspotprops, 'hs_hotspot_inset' )
 		layout.operator( 'object.savehotspot', text='New Hotspot' )
 		layout.operator( 'mesh.refhotspot', text='Ref Hotspot' )
 		layout.operator( 'mesh.matchhotspot', text='Hotspot Match' )
@@ -1529,25 +1532,6 @@ def register():
 	bpy.utils.register_class( MESH_OT_nrsthotspot )
 	bpy.utils.register_class( MESH_OT_moshotspot )
 	bpy.utils.register_class( MESH_OT_grabapplyuvbounds )
-	bpy.types.Scene.use_subrect_atlas = bpy.props.BoolProperty( name='Use Override Atlas' )
-	bpy.types.Scene.hotspot_inset = bpy.props.FloatProperty( name='Inset', default=0.0 )
-	bpy.types.Scene.subrect_atlas = bpy.props.PointerProperty( name='Atlas', type=bpy.types.Object, description='atlas object' )
-	bpy.types.Scene.recttype_filter = bpy.props.EnumProperty( name='Filter', default='none', items=[ ( 'none', 'None', "", 1 ), ( 'onlytrim', 'Only Trims', "", 2 ), ( 'notrim', 'No Trims', "", 3 ) ] )
-	bpy.types.Scene.use_multiUV = bpy.props.BoolProperty( name='Use MultiUV', default=False )
-	bpy.types.Scene.hotspot_uv1 = bpy.props.EnumProperty(
-		items=[ ( "none", "None", "", 1 ),
-		 		( "hotspot", "Hotspot", "", 2 ),
-				( "worldspace", "Worldspace", "", 3 ) ],
-		name="UV1",
-		default="hotspot"
-	)
-	bpy.types.Scene.hotspot_uv2 = bpy.props.EnumProperty(
-		items=[ ( "none", "None", "", 1 ),
-		 		( "hotspot", "Hotspot", "", 2 ),
-				( "worldspace", "Worldspace", "", 3 ) ],
-		name="UV2",
-		default="none"
-	)
 	bpy.utils.register_class( UV_PT_UVHotspotTools )
 	bpy.utils.register_class( OBJECT_OT_repotoascii )
 	bpy.utils.register_class( MESH_OT_uvaspectscale )
@@ -1564,13 +1548,6 @@ def unregister():
 	bpy.utils.unregister_class( MESH_OT_nrsthotspot )
 	bpy.utils.unregister_class( MESH_OT_moshotspot )
 	bpy.utils.unregister_class( MESH_OT_grabapplyuvbounds )
-	del bpy.types.Scene.use_subrect_atlas
-	del bpy.types.Scene.subrect_atlas
-	del bpy.types.Scene.recttype_filter
-	del bpy.types.Scene.hotspot_inset
-	del bpy.types.Scene.hotspot_uv1
-	del bpy.types.Scene.hotspot_uv2
-	del bpy.types.Scene.use_multiUV
 	bpy.utils.unregister_class( UV_PT_UVHotspotTools )
 	bpy.utils.unregister_class( OBJECT_OT_repotoascii )
 	bpy.utils.unregister_class( MESH_OT_uvaspectscale )

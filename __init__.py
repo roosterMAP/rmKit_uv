@@ -11,6 +11,7 @@ bl_info = {
 
 import bpy
 from . import (
+	propertygroup,
 	move_to_furthest_uv,
 	stitch,
 	panel,
@@ -51,6 +52,7 @@ class rmKitUVPannel_parent_uv( bpy.types.Panel ):
 def register():
 	bpy.utils.register_class( rmKitUVPannel_parent )
 	bpy.utils.register_class( rmKitUVPannel_parent_uv )
+	propertygroup.register()
 	loopringuv.register()
 	move_to_furthest_uv.register()
 	linear_deformer_uv.register()
@@ -69,6 +71,7 @@ def register():
 def unregister():
 	bpy.utils.unregister_class( rmKitUVPannel_parent )
 	bpy.utils.unregister_class( rmKitUVPannel_parent_uv )
+	propertygroup.unregister()
 	loopringuv.unregister()
 	move_to_furthest_uv.unregister()
 	linear_deformer_uv.unregister()

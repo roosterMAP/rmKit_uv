@@ -59,11 +59,11 @@ class VIEW3D_PT_VIEW3D_UV( bpy.types.Panel ):
 		layout.operator( 'mesh.refhotspot', text='Ref Hotspot' )
 		layout.separator()
 		r1 = layout.row()
-		r1.prop( context.scene, 'use_multiUV' )
+		r1.prop( context.scene.rmkituv_props.hotspotprops, 'hs_use_multiUV' )
 		r2 = layout.row()
-		r2.prop( context.scene, 'hotspot_uv1' )
-		r2.prop( context.scene, 'hotspot_uv2' )
-		r2.enabled = context.scene.use_multiUV
+		r2.prop( context.scene.rmkituv_props.hotspotprops, 'hs_hotspot_uv1' )
+		r2.prop( context.scene.rmkituv_props.hotspotprops, 'hs_hotspot_uv2' )
+		r2.enabled = context.scene.rmkituv_props.hotspotprops.hs_use_multiUV
 		layout.operator( 'mesh.matchhotspot' )
 	
 	
