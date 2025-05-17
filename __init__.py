@@ -91,7 +91,7 @@ def unregister():
 	rectangularize.unregister()
 	hotspot.unregister()
 	uvboundstransform.unregister()
-	uvgrowshrink.runegister()
+	uvgrowshrink.unregister()
 	seambyangle.unregister()
 	
 	preferences.unregister()
