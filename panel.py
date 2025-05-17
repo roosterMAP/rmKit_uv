@@ -51,6 +51,7 @@ class VIEW3D_PT_VIEW3D_UV( bpy.types.Panel ):
 	def draw( self, context ):
 		layout = self.layout
 
+		layout.operator( 'mesh.rm_seambyangle', text='Edge Seam By Angle' )
 		layout.operator( 'mesh.rm_worldspaceproject' )
 		layout.operator( 'mesh.rm_uvgridify', text='UV Gridify' )
 		layout.operator( 'mesh.rm_uvrectangularize', text='UV Boxify' )
