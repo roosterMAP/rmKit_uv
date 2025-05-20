@@ -1,19 +1,14 @@
 import bpy
 
 class HotspotProperties( bpy.types.PropertyGroup ):
-	hs_use_subrect_atlas: bpy.props.BoolProperty(
-		name='Use Override Atlas',
+	hs_use_clipboard_atlas: bpy.props.BoolProperty(
+		name='Override With Clipboard Atlas',
 		default=False,
 		description='Use the overrice subrect atlas instead the material driven one.'
 	)
 	hs_hotspot_inset: bpy.props.FloatProperty(
 		name='Inset',
 		default=0.0
-	)
-	hs_subrect_atlas: bpy.props.PointerProperty(
-		name='Atlas',
-		type=bpy.types.Object,
-		description='Pointer to the override atlas object.'
 	)
 	hs_recttype_filter: bpy.props.EnumProperty(
 		name='Filter',
@@ -29,15 +24,17 @@ class HotspotProperties( bpy.types.PropertyGroup ):
 	)
 	hs_hotspot_uv1: bpy.props.EnumProperty(
 		items=[ ( "none", "None", "", 1 ),
-				( "hotspot", "Hotspot", "", 2 ),
-				( "worldspace", "Worldspace", "", 3 ) ],
+				( "hotspot", "Repo", "", 2 ),
+				( "clipboard", "Clipboard", "", 3 ),
+				( "worldspace", "Worldspace", "", 4 ) ],
 		name="UV1",
 		default="hotspot"
 	)
 	hs_hotspot_uv2: bpy.props.EnumProperty(
 		items=[ ( "none", "None", "", 1 ),
-				( "hotspot", "Hotspot", "", 2 ),
-				( "worldspace", "Worldspace", "", 3 ) ],
+				( "hotspot", "Repo", "", 2 ),
+				( "clipboard", "Clipboard", "", 3 ),
+				( "worldspace", "Worldspace", "", 4 ) ],
 		name="UV2",
 		default="none"
 	)

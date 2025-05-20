@@ -613,6 +613,14 @@ def get_hotfile_path():
 	return filepath
 
 
+def get_clipboardfile_path():
+	writable_dir = bpy.utils.extension_path_user( __package__, create=True )
+	filepath = os.path.join( writable_dir, 'atlas_clipboard.hot' )
+	if not os.path.isfile( filepath ):
+		write_default_file( filepath )
+	return filepath
+
+
 def load_hotspot_from_repo( material_name, material_aspect ):
 	#load hotspot repo file
 	hotfile = get_hotfile_path()
@@ -636,25 +644,15 @@ def get_hotspot( context ):
 	if rmmesh is None:
 		return None, None
 
-	if context.scene.rmkituv_props.hotspotprops.hs_use_subrect_atlas:
-		if context.scene.rmkituv_props.hotspotprops.hs_subrect_atlas is None:
-			return None
-		hotspots = {}
-		h = Hotspot.from_bmesh( rmlib.rmMesh( context.scene.rmkituv_props.hotspotprops.hs_subrect_atlas ) )
+	if context.scene.rmkituv_props.hotspotprops.hs_use_clipboard_atlas:
+		hotfile = get_clipboardfile_path()
+		existing_materials, existing_hotspots = read_hot_file( hotfile )
 
-		material_aspect = 1.0
-		try:
-			d = list( context.scene.rmkituv_props.hotspotprops.hs_subrect_atlas.dimensions )			
-			if d[0] < d[1] and d[0] < d[2]:
-				material_aspect = d[1] / d[2]
-			elif d[1] < d[0] and d[1] < d[2]:
-				material_aspect = d[0] / d[2]
-			else:
-				material_aspect = d[0] / d[1]
-		except ZeroDivisionError:
-			pass
+		selected_key = context.window_manager.generated_icon_hotspotclipboard
+		selected_index = int( selected_key[-1] )
 
-		h.applymaterialaspect( material_aspect )
+		h = hotfile[selected_index]
+		h.applymaterialaspect( 1.0 ) #hard coded for now. need to write aspect to the hotspot filetype
 
 		hotspots = {}
 		with rmmesh as rmmesh:
@@ -860,6 +858,91 @@ class OBJECT_OT_savehotspot( bpy.types.Operator ):
 		#write updated database
 		write_hot_file( hotfile, existing_materials, existing_hotspots )
 		self.report( { 'INFO' }, 'Hotspot Repo Updated!!! {} added'.format( mat_name ) )
+
+		return  {'FINISHED' }
+
+
+class OBJECT_OT_clipboardhotspot( bpy.types.Operator ):
+	"""Save the hotspot layout to the clipbloard."""
+	bl_idname = 'object.clipboardhotspot'
+	bl_label = 'Clipboard Hotspot'
+	bl_options = { 'UNDO' }
+
+	@classmethod
+	def poll( cls, context ):
+		return ( context.active_object is not None and
+				context.mode == 'OBJECT' and
+				context.active_object.type == 'MESH' )
+
+	def invoke(self, context, event):
+		global custom_previews
+
+		rmmesh = rmlib.rmMesh.GetActive( context )
+		hotspot = None
+		with rmmesh as rmmesh:
+			rmmesh.readonly = True
+
+			if len( rmmesh.bmesh.loops.layers.uv.values() ) == 0:
+				self.report( { 'WARNING' }, 'No uv data found!!!' )
+				return { 'CANCELLED' }
+			uvlayer = rmmesh.active_uv
+			
+			polys = rmlib.rmPolygonSet.from_mesh( rmmesh, filter_hidden=False )
+			if len( polys ) == 0:
+				self.report( { 'WARNING' }, 'No faces selected!!!' )
+				return { 'CANCELLED' }
+
+			bounds = []			
+			for f in polys:
+				uvlist = [ mathutils.Vector( l[uvlayer].uv.copy() ) for l in f.loops ]
+				pmin = mathutils.Vector( uvlist[0] )
+				pmax = mathutils.Vector( uvlist[0] )
+				for p in uvlist:
+					for i in range( 2 ):
+						pmin[i] = min( pmin[i], p[i] )
+						pmax[i] = max( pmax[i], p[i] )
+				bounds.append( Bounds2d( [ pmin, pmax ] ).clamp() )
+				
+			hotspot = Hotspot( bounds, name='clipboard' )
+
+		if hotspot is None:
+			return { 'CANCELLED' }
+
+		#get selected preview image
+		selected_key = context.window_manager.generated_icon_hotspotclipboard
+		selected_index = int( selected_key[-1] )
+
+		# Load it into the preview collection
+		global preview_collections
+		thumb = preview_collections['hs_clipboard'].get( 'clipboard0{}'.format( selected_index ) )
+
+		size = 64
+		thumb.image_size = [ size, size ]
+		raw_data = image_from_hotspot( bounds, size=size )
+		thumb.image_pixels_float = raw_data
+		thumb.is_icon_custom = True
+
+		#load hotspot repo file
+		hotfile = get_clipboardfile_path()
+		existing_materials, existing_hotspots = read_hot_file( hotfile )
+
+		#update hotspot database
+		for i in range( 4 ):
+			try:
+				existing_materials[i] = 'clipboard0{}'.format( i )
+			except IndexError:
+				existing_materials.append( 'clipboard0{}'.format( i ) )
+				existing_hotspots.append( Hotspot( [], name='clipboard0{}'.format( i ) ) )
+
+			if i == selected_index:
+				existing_hotspots[i] = hotspot	
+
+		#write updated database
+		write_hot_file( hotfile, existing_materials, existing_hotspots )
+		self.report( { 'INFO' }, 'Clipboard Hotspot written to repo file!!!' )
+
+		global update_clipboard_thumbs
+		update_clipboard_thumbs = True
 
 		return  {'FINISHED' }
 
@@ -1161,7 +1244,7 @@ class MESH_OT_matchhotspot( bpy.types.Operator ):
 					islands_as_indexes.append( [ f.index for f in island ] )					
 					island.select( replace=True )
 					for i, uvlayer in enumerate( uvlayers ):
-						if not context.scene.rmkituv_props.hotspotprops.hs_use_multiUV or uv_modes[i] == 'hotspot':
+						if not context.scene.rmkituv_props.hotspotprops.hs_use_multiUV or uv_modes[i] == 'hotspot' or uv_modes[i] == 'clipboard':
 							result = bpy.ops.mesh.rm_uvgridify( uv_map_name=uvlayer.name ) #gridify
 							if result == { 'CANCELLED' }:
 								rmmesh.mesh.uv_layers.active_index = i
@@ -1174,7 +1257,7 @@ class MESH_OT_matchhotspot( bpy.types.Operator ):
 							bpy.ops.mesh.rm_worldspaceproject( uv_map_name=uvlayer.name )
 				rmmesh.mesh.uv_layers.active_index = current_active_layer_index
 
-		elif context.area.type == 'IMAGE_EDITOR': #iv in uvvp, scale to mat sizecomplete_failure
+		elif context.area.type == 'IMAGE_EDITOR': #if in uvvp, scale to mat sizecomplete_failure
 			rmmesh = rmlib.rmMesh.GetActive( context )
 			with rmmesh as rmmesh:
 				rmmesh.readonly = True
@@ -1193,6 +1276,13 @@ class MESH_OT_matchhotspot( bpy.types.Operator ):
 					#island.select( replace=True )
 					#bpy.ops.mesh.rm_scaletomaterialsize() #scale to mat size
 					
+		clipboard_hotspot = None
+		if 'clipboard' in uv_modes:
+			selected_key = context.window_manager.generated_icon_hotspotclipboard
+			selected_index = int( selected_key[-1] )
+			existing_clipboard_materials, existing_clipboard_hotspots = read_hot_file( get_clipboardfile_path() )
+			clipboard_hotspot = existing_clipboard_hotspots[selected_index]
+
 		#hotspot
 		rmmesh = rmlib.rmMesh.GetActive( context )
 		with rmmesh as rmmesh:
@@ -1217,7 +1307,10 @@ class MESH_OT_matchhotspot( bpy.types.Operator ):
 							source_bounds = Bounds2d.from_loops( loops, uvlayer, materialaspect=hotspot.materialaspect )
 							if source_bounds.area <= 0.00001:
 								continue
-							target_bounds = hotspot.match( source_bounds, tollerance=self.tollerance, trim_filter=context.scene.rmkituv_props.hotspotprops.hs_recttype_filter ).copy()
+							if uv_modes[i] == 'hotspot':
+								target_bounds = hotspot.match( source_bounds, tollerance=self.tollerance, trim_filter=context.scene.rmkituv_props.hotspotprops.hs_recttype_filter ).copy()
+							elif uv_modes[i] == 'clipboard':
+								target_bounds = clipboard_hotspot.match( source_bounds, tollerance=self.tollerance, trim_filter=context.scene.rmkituv_props.hotspotprops.hs_recttype_filter ).copy()
 							if target_bounds is None:
 								self.report( { 'WARNING' }, 'Could not find a hotspot match for a uvisland!!!' )
 								continue
@@ -1509,22 +1602,102 @@ class UV_PT_UVHotspotTools( bpy.types.Panel ):
 	bl_label = 'Hotspot'
 	bl_region_type = 'UI'
 	bl_space_type = 'IMAGE_EDITOR'
-	bl_options = { 'DEFAULT_CLOSED' }
+	#bl_options = { 'DEFAULT_CLOSED' }
 
 	def draw( self, context ):
 		layout = self.layout
-		layout.prop( context.scene.rmkituv_props.hotspotprops, 'hs_use_subrect_atlas' )
+
+		layout.template_icon_view( context.window_manager, "generated_icon_hotspotclipboard", show_labels=True, scale=4.0, scale_popup=4.0)
+
+		layout = layout.column()
+		layout.operator( OBJECT_OT_clipboardhotspot.bl_idname )			
+		layout.prop( context.scene.rmkituv_props.hotspotprops, 'hs_use_clipboard_atlas' )
+
+		layout.separator()
+
 		r1 = layout.row()
-		r1.label( text="Atlas: ")
-		r1.prop_search( context.scene.rmkituv_props.hotspotprops, "hs_subrect_atlas", context.scene, "objects", text="", icon="MOD_MULTIRES" )
-		r1.enabled = context.scene.rmkituv_props.hotspotprops.hs_use_subrect_atlas
-		r2 = layout.row()
-		r2.prop( context.scene.rmkituv_props.hotspotprops, 'hs_recttype_filter' )
-		r2.prop( context.scene.rmkituv_props.hotspotprops, 'hs_hotspot_inset' )
+		r1.prop( context.scene.rmkituv_props.hotspotprops, 'hs_recttype_filter' )
+		r1.prop( context.scene.rmkituv_props.hotspotprops, 'hs_hotspot_inset' )
+
+		layout.separator()
+
 		layout.operator( 'object.savehotspot', text='New Hotspot' )
 		layout.operator( 'mesh.refhotspot', text='Ref Hotspot' )
 		layout.operator( 'mesh.matchhotspot', text='Hotspot Match' )
 		layout.operator( 'mesh.nrsthotspot', text='Hotspot Nearest' )
+
+
+class VIEW3D_PT_UVHotspotTools( bpy.types.Panel ):
+	bl_parent_id = 'VIEW3D_PT_RMKITUV_PARENT'
+	bl_idname = 'VIEW3D_PT_UVHotspotTools'
+	bl_label = 'Hotspot'
+	bl_region_type = 'UI'
+	bl_space_type = 'VIEW_3D'
+	#bl_options = { 'DEFAULT_CLOSED' }
+
+	def draw( self, context ):
+		layout = self.layout
+		
+		layout.template_icon_view( context.window_manager, "generated_icon_hotspotclipboard", show_labels=True, scale=4.0, scale_popup=4.0)
+
+		layout = layout.column()
+		layout.operator( OBJECT_OT_clipboardhotspot.bl_idname )			
+		layout.prop( context.scene.rmkituv_props.hotspotprops, 'hs_use_clipboard_atlas' )
+
+		layout.separator()
+
+		r1 = layout.row()
+		r1.prop( context.scene.rmkituv_props.hotspotprops, 'hs_recttype_filter' )
+		r1.prop( context.scene.rmkituv_props.hotspotprops, 'hs_hotspot_inset' )
+
+		layout.separator()
+
+		layout.operator( 'object.savehotspot', text='New Hotspot' )
+		layout.operator( 'mesh.refhotspot', text='Ref Hotspot' )
+
+		layout.separator()
+
+		r2 = layout.row()
+		r2.prop( context.scene.rmkituv_props.hotspotprops, 'hs_use_multiUV' )
+		r2.enabled = not context.scene.rmkituv_props.hotspotprops.hs_use_clipboard_atlas
+		r3 = layout.row()
+		r3.prop( context.scene.rmkituv_props.hotspotprops, 'hs_hotspot_uv1' )
+		r3.prop( context.scene.rmkituv_props.hotspotprops, 'hs_hotspot_uv2' )
+		r3.enabled = context.scene.rmkituv_props.hotspotprops.hs_use_multiUV and not context.scene.rmkituv_props.hotspotprops.hs_use_clipboard_atlas
+		layout.operator( 'mesh.matchhotspot' )
+
+
+update_clipboard_thumbs = True
+
+def enum_previews_hotspot_clipboardfile( self, context ):
+	global update_clipboard_thumbs
+	if not update_clipboard_thumbs:
+		return preview_collections["hs_clipboard"].my_previews
+	update_clipboard_thumbs = False
+	
+	enum_items = []
+
+	if context is None:
+		return enum_items	
+
+	hotfile = get_clipboardfile_path()
+	existing_materials, existing_hotspots = read_hot_file( hotfile )
+	
+	size = 64
+	pcoll = preview_collections["hs_clipboard"]
+	for i in range( 4 ):
+		name = 'clipboard0{}'.format( i )
+		thumb = pcoll.get( name )
+		thumb.image_size = [ size, size ]
+		try:
+			thumb.image_pixels_float = image_from_hotspot( existing_hotspots[i].data )
+		except:
+			pass
+		thumb.is_icon_custom = True
+		enum_items.append( ( name, name, "", thumb.icon_id, i ) )
+
+	pcoll.my_previews = enum_items
+	return pcoll.my_previews
 
 def register():
 	bpy.utils.register_class( OBJECT_OT_savehotspot )
@@ -1533,13 +1706,24 @@ def register():
 	bpy.utils.register_class( MESH_OT_moshotspot )
 	bpy.utils.register_class( MESH_OT_grabapplyuvbounds )
 	bpy.utils.register_class( UV_PT_UVHotspotTools )
+	bpy.utils.register_class( VIEW3D_PT_UVHotspotTools )
 	bpy.utils.register_class( OBJECT_OT_repotoascii )
 	bpy.utils.register_class( MESH_OT_uvaspectscale )
+	bpy.utils.register_class( OBJECT_OT_clipboardhotspot )
 
 	pcoll = bpy.utils.previews.new()
 	pcoll.my_previews = ()
 	preview_collections["main"] = pcoll
 	bpy.utils.register_class( MESH_OT_refhostpot )
+
+	pcol2 = bpy.utils.previews.new()
+	pcol2.new( 'clipboard00' )
+	pcol2.new( 'clipboard01' )
+	pcol2.new( 'clipboard02' )
+	pcol2.new( 'clipboard03' )
+	preview_collections["hs_clipboard"] = pcol2
+
+	bpy.types.WindowManager.generated_icon_hotspotclipboard = bpy.props.EnumProperty(items=enum_previews_hotspot_clipboardfile)
 
 
 def unregister():
@@ -1549,10 +1733,12 @@ def unregister():
 	bpy.utils.unregister_class( MESH_OT_moshotspot )
 	bpy.utils.unregister_class( MESH_OT_grabapplyuvbounds )
 	bpy.utils.unregister_class( UV_PT_UVHotspotTools )
+	bpy.utils.unregister_class( VIEW3D_PT_UVHotspotTools )
 	bpy.utils.unregister_class( OBJECT_OT_repotoascii )
 	bpy.utils.unregister_class( MESH_OT_uvaspectscale )
+	bpy.utils.unregister_class( OBJECT_OT_clipboardhotspot )
 
-	for pcoll in preview_collections.values():
-		bpy.utils.previews.remove(pcoll)
+	for pcol in preview_collections.values():
+		bpy.utils.previews.remove(pcol)
 	preview_collections.clear()
 	bpy.utils.unregister_class( MESH_OT_refhostpot )

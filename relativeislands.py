@@ -520,10 +520,10 @@ class MESH_OT_worldspaceproject( bpy.types.Operator ):
 					proj_axis_idx = 0
 					proj_axis = mathutils.Vector( ( 1.0, 0.0, 0.0 ) )
 					proj_axis_sign = 1
-					if abs( dotx ) > abs( doty ) and abs( dotx ) > abs( dotz ):
+					if abs( dotx ) >= abs( doty ) and abs( dotx ) >= abs( dotz ):
 						proj_axis_sign = ( dotx > 0.0 ) * 2.0 - 1.0
 						proj_axis = mathutils.Vector( ( 1.0, 0.0, 0.0 ) )
-					elif abs( doty ) > abs( dotx ) and abs( doty ) > abs( dotz ):
+					elif abs( doty ) >= abs( dotx ) and abs( doty ) >= abs( dotz ):
 						proj_axis_idx = 1
 						proj_axis_sign = ( doty > 0.0 ) * 2.0 - 1.0
 						proj_axis = mathutils.Vector( ( 0.0, 1.0, 0.0 ) )					
