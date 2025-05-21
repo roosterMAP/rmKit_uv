@@ -38,6 +38,16 @@ class HotspotProperties( bpy.types.PropertyGroup ):
 		name="UV2",
 		default="none"
 	)
+	hs_random_rotation: bpy.props.BoolProperty(
+		name='Random Rotation',
+		default=False,
+		description='Randomly rotate the hotspot.'
+	)
+	hs_random_flip: bpy.props.BoolProperty(
+		name='Random Flip',
+		default=False,
+		description='Randomly flip the hotspot.'
+	)
 
 
 class MoveToFurthestUVProperties( bpy.types.PropertyGroup ):

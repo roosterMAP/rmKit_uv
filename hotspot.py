@@ -258,7 +258,7 @@ class Bounds2d():
 		max_y = min( self.__max[1], bounds.max[1] )
 		return ( max_x - min_x ) * ( max_y - min_y )
 
-	def transform( self, other, skip_rot=False, trim=False, inset=0.0 ):
+	def transform( self, other, skip_rot=False, trim=False, inset=0.0, random_rot=False, random_flip=False ):
 		#compute the 3x3 matrix that transforms bound 'other' to self
 
 		if self.width < rmlib.util.FLOAT_EPSILON or self.height < rmlib.util.FLOAT_EPSILON:
@@ -274,6 +274,14 @@ class Bounds2d():
 
 		other_inset_width = other.width - inset
 		other_inset_height = other.height - inset * self.__materialaspect
+
+		#randomly rotate 180 degrees
+		rand_rot_mat = mathutils.Matrix.Identity( 3 )
+		if random_rot and random.random() > 0.5:
+			rand_rot_mat[0][0] = math.cos( math.pi )
+			rand_rot_mat[1][0] = math.sin( math.pi ) * -1.0
+			rand_rot_mat[0][1] = math.sin( math.pi )
+			rand_rot_mat[1][1] = math.cos( math.pi )
 
 		rot_mat = mathutils.Matrix.Identity( 3 )
 		scl_mat = mathutils.Matrix.Identity( 3 )
@@ -309,7 +317,13 @@ class Bounds2d():
 				scl_mat[0][0] = other_inset_width / self.width
 				scl_mat[1][1] = other_inset_height / self.height
 
-		return trans_mat_inverse @ scl_mat @ rot_mat @ trans_mat
+		#randomly flip along each axis
+		if random_flip and random.random() > 0.5:
+			scl_mat[0][0] *= -1.0
+		if random_flip and random.random() > 0.5:
+			scl_mat[1][1] *= -1.0
+
+		return trans_mat_inverse @ scl_mat @ rand_rot_mat @ rot_mat @ trans_mat
 	
 	def copy( self ):
 		return Bounds2d( [ self.__min, self.__max ], materialaspect=self.__materialaspect )
@@ -651,7 +665,7 @@ def get_hotspot( context ):
 		selected_key = context.window_manager.generated_icon_hotspotclipboard
 		selected_index = int( selected_key[-1] )
 
-		h = hotfile[selected_index]
+		h = existing_hotspots[selected_index]
 		h.applymaterialaspect( 1.0 ) #hard coded for now. need to write aspect to the hotspot filetype
 
 		hotspots = {}
@@ -1079,20 +1093,56 @@ class MESH_OT_moshotspot( bpy.types.Operator ):
 
 		use_trim = context.scene.rmkituv_props.hotspotprops.hs_recttype_filter != 'notrim'		
 
+		#if multiUV get the selected hotspot from the clipboard in case a uv mode is set to clipboard
+		clipboard_hotspot = None
+		uv_modes = ( context.scene.rmkituv_props.hotspotprops.hs_hotspot_uv1, context.scene.rmkituv_props.hotspotprops.hs_hotspot_uv2 )
+		if context.scene.rmkituv_props.hotspotprops.hs_use_multiUV:
+			if uv_modes[0] == 'none' and uv_modes[1] == 'none':
+				self.repo( {'ERROR'}, 'Could not hotspot multiUV match because both uv enums set to None!!!' )
+				return { 'CANCELLED' }
+
+			if 'clipboard' in uv_modes:
+				selected_key = context.window_manager.generated_icon_hotspotclipboard
+				selected_index = int( selected_key[-1] )
+				existing_clipboard_materials, existing_clipboard_hotspots = read_hot_file( get_clipboardfile_path() )
+				clipboard_hotspot = existing_clipboard_hotspots[selected_index]
+
+		uvlayers = []
 		rmmesh = rmlib.rmMesh.GetActive( context )
 		with rmmesh as rmmesh:
 			uvlayer = rmmesh.active_uv
+
+			#if multiUV, get uvlayers to look up if the active_uv is set to clipboard
+			if context.scene.rmkituv_props.hotspotprops.hs_use_multiUV:
+				for i, uvmode in enumerate( uv_modes ):
+					try:
+						uvlayers.append( rmmesh.bmesh.loops.layers.uv.values()[i] )
+					except IndexError:
+						uvlayers.append( rmmesh.bmesh.loops.layers.uv.new( 'UVMap' ) )
 			
 			faces = GetFaceSelection( context, rmmesh )
 			if len( faces ) < 1:
 				return { 'CANCELLED' }
 
 			for island in faces.island( uvlayer ):
-				try:
-					hotspot = hotspot_dict[island[0].material_index]
-				except KeyError:
-					self.report( { 'WARNING' }, 'Hotspot atlas not found for {}'.format( rmmesh.mesh.materials[island[0].material_index].name ) )
-					continue
+				hotspot = None
+				if context.scene.rmkituv_props.hotspotprops.hs_use_multiUV:
+					if uvlayer.name == uvlayers[0].name and uv_modes[0] == 'clipboard':
+						hotspot = clipboard_hotspot
+					elif uvlayer.name == uvlayers[1].name and uv_modes[1] == 'clipboard':
+						hotspot = clipboard_hotspot
+					else:
+						try:
+							hotspot = hotspot_dict[island[0].material_index]
+						except KeyError:
+							self.report( { 'WARNING' }, 'Hotspot atlas not found for {}'.format( rmmesh.mesh.materials[island[0].material_index].name ) )
+							continue
+				else:
+					try:
+						hotspot = hotspot_dict[island[0].material_index]
+					except KeyError:
+						self.report( { 'WARNING' }, 'Hotspot atlas not found for {}'.format( rmmesh.mesh.materials[island[0].material_index].name ) )
+						continue
 
 				target_bounds = hotspot.nearest( self.mos_uv[0], self.mos_uv[1] ).copy()
 
@@ -1102,7 +1152,7 @@ class MESH_OT_moshotspot( bpy.types.Operator ):
 						loops.add( l )
 				source_bounds = Bounds2d.from_loops( loops, uvlayer, materialaspect=hotspot.materialaspect )
 
-				mat = source_bounds.transform( target_bounds, skip_rot=False, trim=use_trim, inset=context.scene.rmkituv_props.hotspotprops.hs_hotspot_inset / 1024.0 )
+				mat = source_bounds.transform( target_bounds, skip_rot=False, trim=use_trim, inset=context.scene.rmkituv_props.hotspotprops.hs_hotspot_inset / 1024.0, random_rot=context.scene.rmkituv_props.hotspotprops.hs_random_rotation, random_flip=context.scene.rmkituv_props.hotspotprops.hs_random_flip )
 				for l in loops:
 					uv = mathutils.Vector( l[uvlayer].uv.copy() ).to_3d()
 					uv[2] = 1.0
@@ -1140,20 +1190,56 @@ class MESH_OT_nrsthotspot( bpy.types.Operator ):
 
 		use_trim = context.scene.rmkituv_props.hotspotprops.hs_recttype_filter != 'notrim'
 
+		#if multiUV get the selected hotspot from the clipboard in case a uv mode is set to clipboard
+		clipboard_hotspot = None
+		uv_modes = ( context.scene.rmkituv_props.hotspotprops.hs_hotspot_uv1, context.scene.rmkituv_props.hotspotprops.hs_hotspot_uv2 )
+		if context.scene.rmkituv_props.hotspotprops.hs_use_multiUV:
+			if uv_modes[0] == 'none' and uv_modes[1] == 'none':
+				self.repo( {'ERROR'}, 'Could not hotspot multiUV match because both uv enums set to None!!!' )
+				return { 'CANCELLED' }
+
+			if 'clipboard' in uv_modes:
+				selected_key = context.window_manager.generated_icon_hotspotclipboard
+				selected_index = int( selected_key[-1] )
+				existing_clipboard_materials, existing_clipboard_hotspots = read_hot_file( get_clipboardfile_path() )
+				clipboard_hotspot = existing_clipboard_hotspots[selected_index]
+
+		uvlayers = []
 		rmmesh = rmlib.rmMesh.GetActive( context )
 		with rmmesh as rmmesh:
 			uvlayer = rmmesh.active_uv
+
+			#if multiUV, get uvlayers to look up if the active_uv is set to clipboard
+			if context.scene.rmkituv_props.hotspotprops.hs_use_multiUV:
+				for i, uvmode in enumerate( uv_modes ):
+					try:
+						uvlayers.append( rmmesh.bmesh.loops.layers.uv.values()[i] )
+					except IndexError:
+						uvlayers.append( rmmesh.bmesh.loops.layers.uv.new( 'UVMap' ) )
 			
 			faces = GetFaceSelection( context, rmmesh )
 			if len( faces ) < 1:
 				return { 'CANCELLED' }
 
 			for island in faces.island( uvlayer ):
-				try:
-					hotspot = hotspot_dict[island[0].material_index]
-				except KeyError:
-					self.report( { 'WARNING' }, 'Hotspot atlas not found for {}'.format( rmmesh.mesh.materials[island[0].material_index].name ) )
-					continue
+				hotspot = None
+				if context.scene.rmkituv_props.hotspotprops.hs_use_multiUV:
+					if uvlayer.name == uvlayers[0].name and uv_modes[0] == 'clipboard':
+						hotspot = clipboard_hotspot
+					elif uvlayer.name == uvlayers[1].name and uv_modes[1] == 'clipboard':
+						hotspot = clipboard_hotspot
+					else:
+						try:
+							hotspot = hotspot_dict[island[0].material_index]
+						except KeyError:
+							self.report( { 'WARNING' }, 'Hotspot atlas not found for {}'.format( rmmesh.mesh.materials[island[0].material_index].name ) )
+							continue
+				else:
+					try:
+						hotspot = hotspot_dict[island[0].material_index]
+					except KeyError:
+						self.report( { 'WARNING' }, 'Hotspot atlas not found for {}'.format( rmmesh.mesh.materials[island[0].material_index].name ) )
+						continue
 
 				loops = set()
 				for f in island:
@@ -1205,6 +1291,7 @@ class MESH_OT_matchhotspot( bpy.types.Operator ):
 		uvlayers = []
 
 		#preprocess uvs
+		clipboard_hotspot = None
 		islands_as_indexes = []
 		if context.area.type == 'VIEW_3D': #if in 3dvp, scale to mat size then rectangularize/gridify uv islands
 			uv_modes = ( context.scene.rmkituv_props.hotspotprops.hs_hotspot_uv1, context.scene.rmkituv_props.hotspotprops.hs_hotspot_uv2 )
@@ -1212,6 +1299,12 @@ class MESH_OT_matchhotspot( bpy.types.Operator ):
 				if uv_modes[0] == 'none' and uv_modes[1] == 'none':
 					self.repo( {'ERROR'}, 'Could not hotspot multiUV match because both uv enums set to None!!!' )
 					return { 'CANCELLED' }
+
+			if 'clipboard' in uv_modes:
+				selected_key = context.window_manager.generated_icon_hotspotclipboard
+				selected_index = int( selected_key[-1] )
+				existing_clipboard_materials, existing_clipboard_hotspots = read_hot_file( get_clipboardfile_path() )
+				clipboard_hotspot = existing_clipboard_hotspots[selected_index]
 			
 			rmmesh = rmlib.rmMesh.GetActive( context )
 			with rmmesh as rmmesh:
@@ -1276,13 +1369,6 @@ class MESH_OT_matchhotspot( bpy.types.Operator ):
 					#island.select( replace=True )
 					#bpy.ops.mesh.rm_scaletomaterialsize() #scale to mat size
 					
-		clipboard_hotspot = None
-		if 'clipboard' in uv_modes:
-			selected_key = context.window_manager.generated_icon_hotspotclipboard
-			selected_index = int( selected_key[-1] )
-			existing_clipboard_materials, existing_clipboard_hotspots = read_hot_file( get_clipboardfile_path() )
-			clipboard_hotspot = existing_clipboard_hotspots[selected_index]
-
 		#hotspot
 		rmmesh = rmlib.rmMesh.GetActive( context )
 		with rmmesh as rmmesh:
@@ -1303,7 +1389,7 @@ class MESH_OT_matchhotspot( bpy.types.Operator ):
 						for l in f.loops:
 							loops.append( l )
 					for i, uvlayer in enumerate( uvlayers ):
-						if not context.scene.rmkituv_props.hotspotprops.hs_use_multiUV or uv_modes[i] == 'hotspot':
+						if not context.scene.rmkituv_props.hotspotprops.hs_use_multiUV or uv_modes[i] == 'hotspot' or uv_modes[i] == 'clipboard':
 							source_bounds = Bounds2d.from_loops( loops, uvlayer, materialaspect=hotspot.materialaspect )
 							if source_bounds.area <= 0.00001:
 								continue
@@ -1314,7 +1400,7 @@ class MESH_OT_matchhotspot( bpy.types.Operator ):
 							if target_bounds is None:
 								self.report( { 'WARNING' }, 'Could not find a hotspot match for a uvisland!!!' )
 								continue
-							mat = source_bounds.transform( target_bounds, skip_rot=False, trim=use_trim, inset=context.scene.rmkituv_props.hotspotprops.hs_hotspot_inset / 1024.0 )
+							mat = source_bounds.transform( target_bounds, skip_rot=False, trim=use_trim, inset=context.scene.rmkituv_props.hotspotprops.hs_hotspot_inset / 1024.0, random_rot=context.scene.rmkituv_props.hotspotprops.hs_random_rotation, random_flip=context.scene.rmkituv_props.hotspotprops.hs_random_flip )
 							for l in loops:
 								uv = mathutils.Vector( l[uvlayer].uv.copy() ).to_3d()
 								uv[2] = 1.0
@@ -1346,7 +1432,7 @@ class MESH_OT_matchhotspot( bpy.types.Operator ):
 					if target_bounds is None:
 						self.report( { 'WARNING' }, 'Could not find a hotspot match for a uvisland!!!' )
 						continue
-					mat = source_bounds.transform( target_bounds, skip_rot=False, trim=use_trim, inset=context.scene.rmkituv_props.hotspotprops.hs_hotspot_inset / 1024.0 )		
+					mat = source_bounds.transform( target_bounds, skip_rot=False, trim=use_trim, inset=context.scene.rmkituv_props.hotspotprops.hs_hotspot_inset / 1024.0, random_rot=context.scene.rmkituv_props.hotspotprops.hs_random_rotation, random_flip=context.scene.rmkituv_props.hotspotprops.hs_random_flip )		
 					for l in loops:
 						uv = mathutils.Vector( l[uvlayer].uv.copy() ).to_3d()
 						uv[2] = 1.0
@@ -1619,6 +1705,10 @@ class UV_PT_UVHotspotTools( bpy.types.Panel ):
 		r1.prop( context.scene.rmkituv_props.hotspotprops, 'hs_recttype_filter' )
 		r1.prop( context.scene.rmkituv_props.hotspotprops, 'hs_hotspot_inset' )
 
+		r2 = layout.row()
+		r2.prop( context.scene.rmkituv_props.hotspotprops, 'hs_random_rotation' )
+		r2.prop( context.scene.rmkituv_props.hotspotprops, 'hs_random_flip' )
+
 		layout.separator()
 
 		layout.operator( 'object.savehotspot', text='New Hotspot' )
@@ -1650,6 +1740,10 @@ class VIEW3D_PT_UVHotspotTools( bpy.types.Panel ):
 		r1.prop( context.scene.rmkituv_props.hotspotprops, 'hs_recttype_filter' )
 		r1.prop( context.scene.rmkituv_props.hotspotprops, 'hs_hotspot_inset' )
 
+		r2 = layout.row()
+		r2.prop( context.scene.rmkituv_props.hotspotprops, 'hs_random_rotation' )
+		r2.prop( context.scene.rmkituv_props.hotspotprops, 'hs_random_flip' )
+
 		layout.separator()
 
 		layout.operator( 'object.savehotspot', text='New Hotspot' )
@@ -1657,13 +1751,13 @@ class VIEW3D_PT_UVHotspotTools( bpy.types.Panel ):
 
 		layout.separator()
 
-		r2 = layout.row()
-		r2.prop( context.scene.rmkituv_props.hotspotprops, 'hs_use_multiUV' )
-		r2.enabled = not context.scene.rmkituv_props.hotspotprops.hs_use_clipboard_atlas
 		r3 = layout.row()
-		r3.prop( context.scene.rmkituv_props.hotspotprops, 'hs_hotspot_uv1' )
-		r3.prop( context.scene.rmkituv_props.hotspotprops, 'hs_hotspot_uv2' )
-		r3.enabled = context.scene.rmkituv_props.hotspotprops.hs_use_multiUV and not context.scene.rmkituv_props.hotspotprops.hs_use_clipboard_atlas
+		r3.prop( context.scene.rmkituv_props.hotspotprops, 'hs_use_multiUV' )
+		r3.enabled = not context.scene.rmkituv_props.hotspotprops.hs_use_clipboard_atlas
+		r4 = layout.row()
+		r4.prop( context.scene.rmkituv_props.hotspotprops, 'hs_hotspot_uv1' )
+		r4.prop( context.scene.rmkituv_props.hotspotprops, 'hs_hotspot_uv2' )
+		r4.enabled = context.scene.rmkituv_props.hotspotprops.hs_use_multiUV and not context.scene.rmkituv_props.hotspotprops.hs_use_clipboard_atlas
 		layout.operator( 'mesh.matchhotspot' )
 
 
