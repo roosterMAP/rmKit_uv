@@ -17,6 +17,7 @@ def register_keyboard_keymap():
 		RM_MESH_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.grabapplyuvbounds', 'NONE', 'PRESS' ) ) )
 		RM_MESH_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'object.savehotspot', 'NONE', 'PRESS' ) ) )
 		RM_MESH_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.rm_worldspaceproject', 'NONE', 'PRESS' ) ) )
+		RM_MESH_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.rm_seambyangle', 'NONE', 'PRESS' ) ) )
 
 
 		#UV EDITOR KEYMAPS
@@ -82,14 +83,14 @@ class RMKITUVPreferences( bpy.types.AddonPreferences ):
 		row_mesh.label( text='Mesh' )
 		if self.mesh_checkbox:
 			col = box.column( align=True )
-			self.draw_keymap_items( col, 'Mesh', RM_MESH_KEYMAP, {'KEYBOARD'}, False )
+			self.draw_keymap_items( col, 'Mesh', RM_MESH_KEYMAP, {'ACTIONZONE', 'KEYBOARD', 'MOUSE', 'NDOF'}, False )
 
 		row_uv = box.row()
 		row_uv.prop( self, 'uv_checkbox', icon='TRIA_DOWN' if self.uv_checkbox else 'TRIA_RIGHT', icon_only=True, emboss=False )
 		row_uv.label( text='UV Editor' )
 		if self.uv_checkbox:
 			col = box.column( align=True )
-			self.draw_keymap_items( col, 'UV Editor', RM_UV_KEYMAP, {'KEYBOARD'}, False )
+			self.draw_keymap_items( col, 'UV Editor', RM_UV_KEYMAP, {'ACTIONZONE', 'KEYBOARD', 'MOUSE', 'NDOF'}, False )
 
 	@staticmethod
 	def draw_keymap_items( col, km_name, keymap, map_type, allow_remove=False ):

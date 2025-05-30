@@ -9,6 +9,8 @@ ANCHOR_PROP_LIST = ( 'uv_anchor_nw', 'uv_anchor_n', 'uv_anchor_ne',
 
 STATE_PROP_LIST = ( 'uv_state_ctrl', 'uv_state_shift', 'uv_state_alt' )
 
+
+
 def GetLoopGroups( context, rmmesh, uvlayer, local ):
 	sel_mode = context.tool_settings.mesh_select_mode[:]
 	visible_faces = rmlib.rmPolygonSet()
@@ -185,7 +187,7 @@ class MESH_OT_uvmove( bpy.types.Operator ):
 				return { 'CANCELLED' }
 
 			#compute offset vec
-			offset = context.scene.uv_uvmove_offset
+			offset = context.scene.rmkituv_props.uvtransformprops.uv_uvmove_offset
 			offset_vec = mathutils.Vector( ( 0.0, 0.0 ) )
 			if 'n' in self.dir:
 				offset_vec[1] += 1.0
@@ -199,7 +201,7 @@ class MESH_OT_uvmove( bpy.types.Operator ):
 
 			#offset loops
 			for g in groups:
-				if context.scene.uv_fit_movecontinuous:
+				if context.scene.rmkituv_props.uvtransformprops.uv_fit_movecontinuous:
 					g = g.group_vertices( element=True )[0]
 					g.add_overlapping_loops( True )
 
@@ -323,7 +325,7 @@ class MESH_OT_uvslam( bpy.types.Operator ):
 					if 'w' in anchor_str:
 						anchor_pos[0] = bbmin[0]
 
-				if context.scene.uv_fit_movecontinuous:
+				if context.scene.rmkituv_props.uvtransformprops.uv_fit_movecontinuous:
 					g = g.group_vertices( element=True )[0]
 					g.add_overlapping_loops( True )
 
@@ -369,7 +371,7 @@ class MESH_OT_uvrotate( bpy.types.Operator ):
 			anchor_str = GetActiveAnchorStr( context )
 			
 			#compute affine transform
-			angle_offset = context.scene.uv_uvrotation_offset
+			angle_offset = context.scene.rmkituv_props.uvtransformprops.uv_uvrotation_offset
 			theta = math.radians( angle_offset )
 			if 'ccw' not in self.dir:
 				theta *= -1.0
@@ -397,7 +399,7 @@ class MESH_OT_uvrotate( bpy.types.Operator ):
 				if 'w' in anchor_str:
 					anchor_pos[0] = bbmin[0]
 
-				if context.scene.uv_fit_movecontinuous:
+				if context.scene.rmkituv_props.uvtransformprops.uv_fit_movecontinuous:
 					g = g.group_vertices( element=True )[0]
 					g.add_overlapping_loops( True )
 
@@ -453,7 +455,7 @@ class MESH_OT_uvscale( bpy.types.Operator ):
 			anchor_str = GetActiveAnchorStr( context )
 			
 			#compute affine transform
-			scale_factor = context.scene.uv_uvscale_factor
+			scale_factor = context.scene.rmkituv_props.uvtransformprops.uv_uvscale_factor
 			scl_mat = mathutils.Matrix.Identity( 2 )
 			if 'u' in self.dir:
 				scl_mat[0][0] = scale_factor
@@ -484,7 +486,7 @@ class MESH_OT_uvscale( bpy.types.Operator ):
 				if 'w' in anchor_str:
 					anchor_pos[0] = bbmin[0]
 
-				if context.scene.uv_fit_movecontinuous:
+				if context.scene.rmkituv_props.uvtransformprops.uv_fit_movecontinuous:
 					g = g.group_vertices( element=True )[0]
 					g.add_overlapping_loops( True )
 
@@ -558,7 +560,7 @@ class MESH_OT_uvflip( bpy.types.Operator ):
 				if 'w' in anchor_str:
 					anchor_pos[0] = bbmin[0]
 
-				if context.scene.uv_fit_movecontinuous:
+				if context.scene.rmkituv_props.uvtransformprops.uv_fit_movecontinuous:
 					g = g.group_vertices( element=True )[0]
 					g.add_overlapping_loops( True )
 
@@ -603,8 +605,8 @@ class MESH_OT_uvfitsample( bpy.types.Operator ):
 			for g in groups:
 				#compute the anchor pos
 				bbmin, bbmax = GetUVBounds( g, uvlayer )
-				context.scene.uv_fit_bounds_min = bbmin
-				context.scene.uv_fit_bounds_max = bbmax
+				context.scene.rmkituv_props.uvtransformprops.uv_fit_bounds_min = bbmin
+				context.scene.rmkituv_props.uvtransformprops.uv_fit_bounds_max = bbmax
 					
 		return { 'FINISHED' }
 	
@@ -615,8 +617,8 @@ class MESH_OT_uvclearfitsample( bpy.types.Operator ):
 	bl_label = 'Reset Bounds'
 
 	def execute( self, context ):
-		context.scene.uv_fit_bounds_min = ( 0.0, 0.0 )
-		context.scene.uv_fit_bounds_max = ( 1.0, 1.0 )					
+		context.scene.rmkituv_props.uvtransformprops.uv_fit_bounds_min = ( 0.0, 0.0 )
+		context.scene.rmkituv_props.uvtransformprops.uv_fit_bounds_max = ( 1.0, 1.0 )					
 		return { 'FINISHED' }
 
 
@@ -652,14 +654,14 @@ class MESH_OT_uvfit( bpy.types.Operator ):
 		if rmmesh is None:
 			return { 'CANCELLED' }
 
-		use_aspect = context.scene.uv_fit_aspect
+		use_aspect = context.scene.rmkituv_props.uvtransformprops.uv_fit_aspect
 
 		if '0' in self.dir:
 			target_bounds_min = mathutils.Vector( ( 0.0, 0.0 ) )
 			target_bounds_max = mathutils.Vector( ( 1.0, 1.0 ) )
 		else:
-			target_bounds_min = mathutils.Vector( context.scene.uv_fit_bounds_min )
-			target_bounds_max = mathutils.Vector( context.scene.uv_fit_bounds_max )
+			target_bounds_min = mathutils.Vector( context.scene.rmkituv_props.uvtransformprops.uv_fit_bounds_min )
+			target_bounds_max = mathutils.Vector( context.scene.rmkituv_props.uvtransformprops.uv_fit_bounds_max )
 		target_bounds_center = ( target_bounds_max + target_bounds_min ) * 0.5
 		
 		with rmmesh as rmmesh:
@@ -683,7 +685,7 @@ class MESH_OT_uvfit( bpy.types.Operator ):
 				trans_mat[1][2] = bbcenter[1] * -1.0
 				
 				trans_mat_inverse = mathutils.Matrix.Identity( 3 )
-				if context.scene.uv_fit_moveto:
+				if context.scene.rmkituv_props.uvtransformprops.uv_fit_moveto:
 					trans_mat_inverse[0][2] = target_bounds_center[0]
 					trans_mat_inverse[1][2] = target_bounds_center[1]
 				else:
@@ -710,7 +712,7 @@ class MESH_OT_uvfit( bpy.types.Operator ):
 
 				mat = trans_mat_inverse @ scl_mat @ trans_mat
 
-				if context.scene.uv_fit_movecontinuous:
+				if context.scene.rmkituv_props.uvtransformprops.uv_fit_movecontinuous:
 					g = g.group_vertices( element=True )[0]
 					g.add_overlapping_loops( True )
 
@@ -858,7 +860,7 @@ class UV_PT_UVTransformTools( bpy.types.Panel ):
 			c2 = flow.column()
 			c2.alignment = 'EXPAND'
 			c2.operator( MESH_OT_uvslam.bl_idname, text='', icon_value=pcoll['n_c'].icon_id ).dir = 'ln'
-			c2.prop( context.scene, 'uv_uvmove_offset', text='' )
+			c2.prop( context.scene.rmkituv_props.uvtransformprops, 'uv_uvmove_offset', text='' )
 			c2.operator( MESH_OT_uvslam.bl_idname, text='', icon_value=pcoll['s_c'].icon_id ).dir = 'ls'
 			
 			c3 = flow.column()
@@ -877,7 +879,7 @@ class UV_PT_UVTransformTools( bpy.types.Panel ):
 			c2 = flow.column()
 			c2.alignment = 'EXPAND'
 			c2.operator( MESH_OT_uvslam.bl_idname, text='', icon_value=pcoll['n_b'].icon_id ).dir = 'n'
-			c2.prop( context.scene, 'uv_uvmove_offset', text='' )
+			c2.prop( context.scene.rmkituv_props.uvtransformprops, 'uv_uvmove_offset', text='' )
 			c2.operator( MESH_OT_uvslam.bl_idname, text='', icon_value=pcoll['s_b'].icon_id ).dir = 's'
 			
 			c3 = flow.column()
@@ -915,7 +917,7 @@ class UV_PT_UVTransformTools( bpy.types.Panel ):
 			c2 = flow.column()
 			c2.alignment = 'EXPAND'
 			c2.operator( MESH_OT_uvmove.bl_idname, text='', icon_value=pcoll['n_a'].icon_id ).dir = 'n'
-			c2.prop( context.scene, 'uv_uvmove_offset', text='' )
+			c2.prop( context.scene.rmkituv_props.uvtransformprops, 'uv_uvmove_offset', text='' )
 			c2.operator( MESH_OT_uvmove.bl_idname, text='', icon_value=pcoll['s_a'].icon_id ).dir = 's'
 			
 			c3 = flow.column()
@@ -933,7 +935,7 @@ class UV_PT_UVTransformTools( bpy.types.Panel ):
 			c1.operator( MESH_OT_uvrotate.bl_idname, text='', icon_value=pcoll['lcw'].icon_id ).dir = 'lcw'
 			c2 = rot_grid.column()			
 			c2.alignment = 'EXPAND'
-			c2.prop( context.scene, 'uv_uvrotation_offset', text='' )
+			c2.prop( context.scene.rmkituv_props.uvtransformprops, 'uv_uvrotation_offset', text='' )
 			c3 = rot_grid.column()
 			c3.alignment = 'EXPAND'
 			c3.operator( MESH_OT_uvrotate.bl_idname, text='', icon_value=pcoll['lccw'].icon_id ).dir = 'lccw'
@@ -944,7 +946,7 @@ class UV_PT_UVTransformTools( bpy.types.Panel ):
 			c1.operator( MESH_OT_uvrotate.bl_idname, text='', icon_value=pcoll['cw'].icon_id ).dir = 'cw'
 			c2 = rot_grid.column()
 			c2.alignment = 'EXPAND'
-			c2.prop( context.scene, 'uv_uvrotation_offset', text='' )
+			c2.prop( context.scene.rmkituv_props.uvtransformprops, 'uv_uvrotation_offset', text='' )
 			c3 = rot_grid.column()
 			c3.alignment = 'EXPAND'
 			c3.operator( MESH_OT_uvrotate.bl_idname, text='', icon_value=pcoll['ccw'].icon_id ).dir = 'ccw'
@@ -965,7 +967,7 @@ class UV_PT_UVTransformTools( bpy.types.Panel ):
 			c2.operator( MESH_OT_uvscale.bl_idname, text='', icon_value=pcoll['LV-'].icon_id ).dir = 'lv-'
 			c3 = scl_grid.column()
 			c3.alignment = 'EXPAND'
-			c3.prop( context.scene, 'uv_uvscale_factor', text='' )
+			c3.prop( context.scene.rmkituv_props.uvtransformprops, 'uv_uvscale_factor', text='' )
 			c3.operator( MESH_OT_uvflip.bl_idname, text='', icon_value=pcoll['LU'].icon_id ).dir = 'lu'
 			c3.operator( MESH_OT_uvflip.bl_idname, text='', icon_value=pcoll['LV'].icon_id ).dir = 'lv'
 
@@ -982,15 +984,15 @@ class UV_PT_UVTransformTools( bpy.types.Panel ):
 			c2.operator( MESH_OT_uvscale.bl_idname, text='', icon_value=pcoll['V-'].icon_id ).dir = 'v-'
 			c3 = scl_grid.column()
 			c3.alignment = 'EXPAND'
-			c3.prop( context.scene, 'uv_uvscale_factor', text='' )
+			c3.prop( context.scene.rmkituv_props.uvtransformprops, 'uv_uvscale_factor', text='' )
 			c3.operator( MESH_OT_uvflip.bl_idname, text='', icon_value=pcoll['U'].icon_id ).dir = 'u'
 			c3.operator( MESH_OT_uvflip.bl_idname, text='', icon_value=pcoll['V'].icon_id ).dir = 'v'
 
 
 		layout.separator( factor=0.2 )
 		r1 = layout.row()
-		r1.prop( context.scene, 'uv_fit_aspect' )
-		r1.prop( context.scene, 'uv_fit_moveto' )
+		r1.prop( context.scene.rmkituv_props.uvtransformprops, 'uv_fit_aspect' )
+		r1.prop( context.scene.rmkituv_props.uvtransformprops, 'uv_fit_moveto' )
 		r2 = layout.row()
 		r2.operator( MESH_OT_uvfitsample.bl_idname )
 		r2.operator( MESH_OT_uvclearfitsample.bl_idname )
@@ -1028,14 +1030,14 @@ class UV_PT_UVTransformTools( bpy.types.Panel ):
 			c3.alignment = 'EXPAND'
 			c3.operator( MESH_OT_uvfit.bl_idname, text='UV' ).dir = 'uv'
 
-		layout.prop( context.scene, 'uv_fit_movecontinuous' )
+		layout.prop( context.scene.rmkituv_props.uvtransformprops, 'uv_fit_movecontinuous' )
 
 		layout.separator( factor=0.2 )
 		layout.operator( MESH_OT_uvrandom.bl_idname )
 
 
 def anchor_update( prop, context ):
-	prev_value = context.scene.anchor_val_prev
+	prev_value = context.scene.rmkituv_props.uvtransformprops.anchor_val_prev
 	if prev_value != '':
 		prop[prev_value] = False
 	all_false = True
@@ -1043,12 +1045,12 @@ def anchor_update( prop, context ):
 		try:
 			if prop[a]:
 				all_false = False
-				context.scene.anchor_val_prev = a
+				context.scene.rmkituv_props.uvtransformprops.anchor_val_prev = a
 				break
 		except KeyError:
 			continue
 	if all_false:
-		context.scene.anchor_val_prev = ''
+		context.scene.rmkituv_props.uvtransformprops.anchor_val_prev = ''
 
 
 def redraw_view3d( context ):
@@ -1061,7 +1063,7 @@ def redraw_view3d( context ):
 
 
 def state_update( prop, context ):
-	prev_value = context.scene.state_val_prev
+	prev_value = context.scene.rmkituv_props.uvtransformprops.state_val_prev
 	if prev_value != '':
 		prop[prev_value] = False
 	all_false = True
@@ -1069,30 +1071,14 @@ def state_update( prop, context ):
 		try:
 			if prop[a]:
 				all_false = False
-				context.scene.state_val_prev = a
+				context.scene.rmkituv_props.uvtransformprops.state_val_prev = a
 				break
 		except KeyError:
 			continue
 	if all_false:
-		context.scene.state_val_prev = ''
+		context.scene.rmkituv_props.uvtransformprops.state_val_prev = ''
 	redraw_view3d( context )
 
-
-class AnchorProps( bpy.types.PropertyGroup ):
-	uv_anchor_nw: bpy.props.BoolProperty( name='ANW', default=False, update=lambda self, context : anchor_update( self, context ) )
-	uv_anchor_n: bpy.props.BoolProperty( name='AN', default=False, update=lambda self, context : anchor_update( self, context ) )
-	uv_anchor_ne: bpy.props.BoolProperty( name='ANE', default=False, update=lambda self, context : anchor_update( self, context ) )
-	uv_anchor_w: bpy.props.BoolProperty( name='AW', default=False, update=lambda self, context : anchor_update( self, context ) )
-	uv_anchor_c: bpy.props.BoolProperty( name='AC', default=False, update=lambda self, context : anchor_update( self, context ) )
-	uv_anchor_e: bpy.props.BoolProperty( name='AE', default=False, update=lambda self, context : anchor_update( self, context ) )
-	uv_anchor_sw: bpy.props.BoolProperty( name='ASW', default=False, update=lambda self, context : anchor_update( self, context ) )
-	uv_anchor_s: bpy.props.BoolProperty( name='AS', default=False, update=lambda self, context : anchor_update( self, context ) )
-	uv_anchor_se: bpy.props.BoolProperty( name='ASE', default=False, update=lambda self, context : anchor_update( self, context ) )
-
-class StateProps( bpy.types.PropertyGroup ):
-	uv_state_ctrl: bpy.props.BoolProperty( name='Local', default=False, update=lambda self, context : state_update( self, context ) )
-	uv_state_shift: bpy.props.BoolProperty( name='Group', default=False, update=lambda self, context : state_update( self, context ) )
-	uv_state_alt: bpy.props.BoolProperty( name='Anchor', default=False, update=lambda self, context : state_update( self, context ) )
 	
 preview_collections = {}
 
@@ -1166,9 +1152,30 @@ def load_icons():
 	pcoll.load( 'UV0', os.path.join( icons_dir, 'LV.png' ), 'IMAGE' )
 
 	preview_collections['main'] = pcoll
+
+class AnchorProps( bpy.types.PropertyGroup ):
+	uv_anchor_nw: bpy.props.BoolProperty( name='ANW', default=False, update=lambda self, context : anchor_update( self, context ) )
+	uv_anchor_n: bpy.props.BoolProperty( name='AN', default=False, update=lambda self, context : anchor_update( self, context ) )
+	uv_anchor_ne: bpy.props.BoolProperty( name='ANE', default=False, update=lambda self, context : anchor_update( self, context ) )
+	uv_anchor_w: bpy.props.BoolProperty( name='AW', default=False, update=lambda self, context : anchor_update( self, context ) )
+	uv_anchor_c: bpy.props.BoolProperty( name='AC', default=False, update=lambda self, context : anchor_update( self, context ) )
+	uv_anchor_e: bpy.props.BoolProperty( name='AE', default=False, update=lambda self, context : anchor_update( self, context ) )
+	uv_anchor_sw: bpy.props.BoolProperty( name='ASW', default=False, update=lambda self, context : anchor_update( self, context ) )
+	uv_anchor_s: bpy.props.BoolProperty( name='AS', default=False, update=lambda self, context : anchor_update( self, context ) )
+	uv_anchor_se: bpy.props.BoolProperty( name='ASE', default=False, update=lambda self, context : anchor_update( self, context ) )
+
+class StateProps( bpy.types.PropertyGroup ):
+	uv_state_ctrl: bpy.props.BoolProperty( name='Local', default=False, update=lambda self, context : state_update( self, context ) )
+	uv_state_shift: bpy.props.BoolProperty( name='Group', default=False, update=lambda self, context : state_update( self, context ) )
+	uv_state_alt: bpy.props.BoolProperty( name='Anchor', default=False, update=lambda self, context : state_update( self, context ) )
 	
 def register():
 	load_icons()
+
+	bpy.utils.register_class( AnchorProps )
+	bpy.utils.register_class( StateProps )
+	bpy.types.Scene.anchorprops = bpy.props.PointerProperty( type=AnchorProps )
+	bpy.types.Scene.stateprops = bpy.props.PointerProperty( type=StateProps )
 	
 	bpy.utils.register_class( UV_PT_UVTransformTools )
 	bpy.utils.register_class( MESH_OT_uvmove )
@@ -1180,26 +1187,19 @@ def register():
 	bpy.utils.register_class( MESH_OT_uvfitsample )
 	bpy.utils.register_class( MESH_OT_uvclearfitsample )
 	bpy.utils.register_class( MESH_OT_uvrandom )
-	bpy.types.Scene.uv_uvmove_offset = bpy.props.FloatProperty( name='Offset', default=1.0 )
-	bpy.types.Scene.uv_uvrotation_offset = bpy.props.FloatProperty( name='RotationOffset', default=90.0, min=0.0, max=180.0 )
-	bpy.types.Scene.uv_uvscale_factor = bpy.props.FloatProperty( name='Offset', default=2.0 )
-	bpy.types.Scene.anchor_val_prev = bpy.props.StringProperty( name='Anchor Prev Val', default=ANCHOR_PROP_LIST[4] )
-	bpy.types.Scene.state_val_prev = bpy.props.StringProperty( name='State Prev Val', default='' )
-	bpy.types.Scene.uv_fit_aspect = bpy.props.BoolProperty( name='Use Aspect', default=False )
-	bpy.types.Scene.uv_fit_moveto = bpy.props.BoolProperty( name='Move To', default=True )
-	bpy.types.Scene.uv_fit_bounds_min = bpy.props.FloatVectorProperty( size=2, default=( 0.0, 0.0 ) )
-	bpy.types.Scene.uv_fit_bounds_max = bpy.props.FloatVectorProperty( size=2, default=( 1.0, 1.0 ) )
-	bpy.types.Scene.uv_fit_movecontinuous = bpy.props.BoolProperty( name='Transform Continuous', default=False )
-	bpy.utils.register_class( AnchorProps )
-	bpy.utils.register_class( StateProps )
-	bpy.types.Scene.anchorprops = bpy.props.PointerProperty( type=AnchorProps )
-	bpy.types.Scene.stateprops = bpy.props.PointerProperty( type=StateProps )
+
+
 	
 
 def unregister():
 	for pcoll in preview_collections.values():
 		bpy.utils.previews.remove( pcoll )
 	preview_collections.clear()
+
+	bpy.utils.unregister_class( AnchorProps )
+	bpy.utils.unregister_class( StateProps )
+	del bpy.types.Scene.anchorprops
+	del bpy.types.Scene.stateprops
 	
 	bpy.utils.unregister_class( UV_PT_UVTransformTools )
 	bpy.utils.unregister_class( MESH_OT_uvmove )
@@ -1211,17 +1211,3 @@ def unregister():
 	bpy.utils.unregister_class( MESH_OT_uvfitsample )
 	bpy.utils.unregister_class( MESH_OT_uvclearfitsample )
 	bpy.utils.unregister_class( MESH_OT_uvrandom )
-	del bpy.types.Scene.uv_uvmove_offset
-	del bpy.types.Scene.uv_uvrotation_offset
-	del bpy.types.Scene.uv_uvscale_factor
-	del bpy.types.Scene.anchor_val_prev
-	del bpy.types.Scene.state_val_prev
-	del bpy.types.Scene.uv_fit_aspect
-	del bpy.types.Scene.uv_fit_moveto
-	del bpy.types.Scene.uv_fit_bounds_min
-	del bpy.types.Scene.uv_fit_bounds_max
-	del bpy.types.Scene.uv_fit_movecontinuous
-	bpy.utils.unregister_class( AnchorProps )
-	bpy.utils.unregister_class( StateProps )
-	del bpy.types.Scene.anchorprops
-	del bpy.types.Scene.stateprops

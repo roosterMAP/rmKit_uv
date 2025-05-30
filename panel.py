@@ -51,20 +51,11 @@ class VIEW3D_PT_VIEW3D_UV( bpy.types.Panel ):
 	def draw( self, context ):
 		layout = self.layout
 
+		layout.operator( 'mesh.rm_seambyangle', text='Edge Seam By Angle' )
 		layout.operator( 'mesh.rm_worldspaceproject' )
 		layout.operator( 'mesh.rm_uvgridify', text='UV Gridify' )
 		layout.operator( 'mesh.rm_uvrectangularize', text='UV Boxify' )
 		layout.separator()
-		layout.operator( 'object.savehotspot', text='New Hotspot' )
-		layout.operator( 'mesh.refhotspot', text='Ref Hotspot' )
-		layout.separator()
-		r1 = layout.row()
-		r1.prop( context.scene, 'use_multiUV' )
-		r2 = layout.row()
-		r2.prop( context.scene, 'hotspot_uv1' )
-		r2.prop( context.scene, 'hotspot_uv2' )
-		r2.enabled = context.scene.use_multiUV
-		layout.operator( 'mesh.matchhotspot' )
 	
 	
 def register():

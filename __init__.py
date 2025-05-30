@@ -11,6 +11,7 @@ bl_info = {
 
 import bpy
 from . import (
+	propertygroup,
 	move_to_furthest_uv,
 	stitch,
 	panel,
@@ -25,6 +26,7 @@ from . import (
 	uvgrowshrink,
 	preferences,
 	linear_deformer_uv,
+	seambyangle
 )
 
 class rmKitUVPannel_parent( bpy.types.Panel ):
@@ -51,10 +53,13 @@ class rmKitUVPannel_parent_uv( bpy.types.Panel ):
 def register():
 	bpy.utils.register_class( rmKitUVPannel_parent )
 	bpy.utils.register_class( rmKitUVPannel_parent_uv )
+
+	propertygroup.register()
+	panel.register()
+
 	loopringuv.register()
 	move_to_furthest_uv.register()
-	linear_deformer_uv.register()
-	panel.register()
+	linear_deformer_uv.register()	
 	stitch.register()
 	gridify.register()
 	relativeislands.register()
@@ -63,16 +68,21 @@ def register():
 	rectangularize.register()
 	hotspot.register()
 	uvboundstransform.register()
-	uvgrowshrink.register()	
+	uvgrowshrink.register()
+	seambyangle.register()
+	
 	preferences.register()
 
 def unregister():
 	bpy.utils.unregister_class( rmKitUVPannel_parent )
 	bpy.utils.unregister_class( rmKitUVPannel_parent_uv )
+
+	propertygroup.unregister()
+	panel.unregister()
+
 	loopringuv.unregister()
 	move_to_furthest_uv.unregister()
 	linear_deformer_uv.unregister()
-	panel.unregister()
 	stitch.unregister()
 	gridify.unregister()
 	relativeislands.unregister()
@@ -81,5 +91,7 @@ def unregister():
 	rectangularize.unregister()
 	hotspot.unregister()
 	uvboundstransform.unregister()
-	uvgrowshrink.runegister()	
+	uvgrowshrink.unregister()
+	seambyangle.unregister()
+	
 	preferences.unregister()
