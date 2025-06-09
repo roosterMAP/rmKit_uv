@@ -1294,11 +1294,15 @@ class MESH_OT_matchhotspot( bpy.types.Operator ):
 		clipboard_hotspot = None
 		islands_as_indexes = []
 		if context.area.type == 'VIEW_3D': #if in 3dvp, scale to mat size then rectangularize/gridify uv islands
-			uv_modes = ( context.scene.rmkituv_props.hotspotprops.hs_hotspot_uv1, context.scene.rmkituv_props.hotspotprops.hs_hotspot_uv2 )
+
+			uv_modes = ( 'hotspot', 'hotspot' )
 			if context.scene.rmkituv_props.hotspotprops.hs_use_multiUV:
+				uv_modes = ( context.scene.rmkituv_props.hotspotprops.hs_hotspot_uv1, context.scene.rmkituv_props.hotspotprops.hs_hotspot_uv2 )
 				if uv_modes[0] == 'none' and uv_modes[1] == 'none':
 					self.repo( {'ERROR'}, 'Could not hotspot multiUV match because both uv enums set to None!!!' )
 					return { 'CANCELLED' }
+			elif context.scene.rmkituv_props.hotspotprops.hs_use_clipboard_atlas:
+				uv_modes = ( 'clipboard', 'clipboard' )
 
 			if 'clipboard' in uv_modes:
 				selected_key = context.window_manager.generated_icon_hotspotclipboard
@@ -1389,7 +1393,7 @@ class MESH_OT_matchhotspot( bpy.types.Operator ):
 						for l in f.loops:
 							loops.append( l )
 					for i, uvlayer in enumerate( uvlayers ):
-						if not context.scene.rmkituv_props.hotspotprops.hs_use_multiUV or uv_modes[i] == 'hotspot' or uv_modes[i] == 'clipboard':
+						if not context.scene.rmkituv_props.hotspotprops.hs_use_multiUV and ( uv_modes[i] == 'hotspot' or uv_modes[i] == 'clipboard' ):
 							source_bounds = Bounds2d.from_loops( loops, uvlayer, materialaspect=hotspot.materialaspect )
 							if source_bounds.area <= 0.00001:
 								continue
