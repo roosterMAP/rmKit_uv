@@ -1,6 +1,6 @@
 schema_version = "1.0.0"
 id = "rmKit_uv"
-version = "1.0.6"
+version = "1.0.7"
 name = "rmKitUV"
 tagline = "Collection of Tools"
 maintainer = "Timothee Yeramian <lead.acrysoft@gmail.com>"
@@ -16,7 +16,7 @@ tags = ["Mesh", "UV", "Material"]
 blender_version_min = "4.2.0"
 
 wheels = [
-  "./wheels/rmlib-0.1.2-py3-none-any.whl"
+  "./wheels/rmlib-0.1.3-py3-none-any.whl"
 ]
 
 [permissions]
