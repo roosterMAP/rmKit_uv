@@ -1393,7 +1393,7 @@ class MESH_OT_matchhotspot( bpy.types.Operator ):
 						for l in f.loops:
 							loops.append( l )
 					for i, uvlayer in enumerate( uvlayers ):
-						if not context.scene.rmkituv_props.hotspotprops.hs_use_multiUV and ( uv_modes[i] == 'hotspot' or uv_modes[i] == 'clipboard' ):
+						if not context.scene.rmkituv_props.hotspotprops.hs_use_multiUV or ( uv_modes[i] == 'hotspot' or uv_modes[i] == 'clipboard' ):
 							source_bounds = Bounds2d.from_loops( loops, uvlayer, materialaspect=hotspot.materialaspect )
 							if source_bounds.area <= 0.00001:
 								continue
